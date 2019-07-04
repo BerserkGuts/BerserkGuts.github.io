@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="renderer" content="webkit">
+
+  
+  <title>Spring Cloud Gateway踩坑记录——路由动态配置的实现 | Behelit—Helps you become god hand of coding</title>
+
+  <link rel="shortcut icon" href="/images/favicon.png">
+  <link rel="alternate" href="/atom.xml" title="Behelit—Helps you become god hand of coding">
+  <meta name="description" content="初心​       前阵子在项目中应用了spring-cloud-gateway作为微服务网关，由于spring-cloud-gateway基于webfux，而本人是首次尝试使用webflux，因此踩到了很多坑，特此记录下来，希望能够帮助和我一样初次使用spring-cloud-gateway的同学尽量少踩几个坑。 问题现象关于spring-cloud-gateway的路由配置，官方文档里的dem">
+<meta name="keywords" content="spring cloud,spring cloud gateway,后台,微服务">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring Cloud Gateway踩坑记录——路由动态配置的实现">
+<meta property="og:url" content="https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/index.html">
+<meta property="og:site_name" content="Behelit—Helps you become god hand of coding">
+<meta property="og:description" content="初心​       前阵子在项目中应用了spring-cloud-gateway作为微服务网关，由于spring-cloud-gateway基于webfux，而本人是首次尝试使用webflux，因此踩到了很多坑，特此记录下来，希望能够帮助和我一样初次使用spring-cloud-gateway的同学尽量少踩几个坑。 问题现象关于spring-cloud-gateway的路由配置，官方文档里的dem">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T10:01:25.812Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Spring Cloud Gateway踩坑记录——路由动态配置的实现">
+<meta name="twitter:description" content="初心​       前阵子在项目中应用了spring-cloud-gateway作为微服务网关，由于spring-cloud-gateway基于webfux，而本人是首次尝试使用webflux，因此踩到了很多坑，特此记录下来，希望能够帮助和我一样初次使用spring-cloud-gateway的同学尽量少踩几个坑。 问题现象关于spring-cloud-gateway的路由配置，官方文档里的dem">
+
+  <meta name="format-detection" content="telephone=no,email=no">
+  <meta name="theme-color" content="#9C27B0">
+  <meta name="description" content>
+  <meta name="keywords" content=",spring cloud,spring cloud gateway,后台,微服务">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Behelit—Helps you become god hand of coding">
+  <meta name="msapplication-starturl" content="https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/">
+  <meta name="msapplication-navbutton-color" content="#9C27B0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Behelit—Helps you become god hand of coding">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="apple-touch-icon" href="/images/favicon.png">
+
+  
+    <meta property="article:published_time" content="Thu Jul 04 2019 15:21:30 GMT+0800">
+    <meta property="article:modified_time" content="Thu Jul 04 2019 18:01:25 GMT+0800">
+  
+
+  
+    <link rel="canonical" href="https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/">
+  
+
+  
+  
+
+  
+  
+  
+
+  <link rel="stylesheet" href="/css/mdui.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="mdui-appbar-with-toolbar mdui-drawer-body-left mdui-theme-primary-indigo mdui-theme-accent-pink">
+  <script>var a=localStorage.getItem("mdui-theme-layout-dark");if(a){document.getElementsByTagName("body")[0].className+=" mdui-theme-layout-dark"};</script>
+  <header id="header" class="mdui-appbar mdui-appbar-fixed mdui-appbar-scroll-hide mdui-appbar-inset">
+  <div class="mdui-toolbar mdui-color-theme">
+    <a href="javascript:;" class="mdui-btn mdui-btn-icon" mdui-drawer="{target: '#sidebar', swipe: true}"><i class="mdui-icon material-icons">menu</i></a>
+    <a href="/" class="mdui-typo-headline">Behelit—Helps you become god hand of coding</a>
+    <div class="mdui-toolbar-spacer"></div>
+    <a href="javascript:;" class="mdui-btn mdui-btn-icon" mdui-dialog="{target: '#search'}" mdui-tooltip="{content: '搜索'}"><i class="mdui-icon material-icons">search</i></a>
+    <a href="/atom.xml" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content: 'RSS'}"><i class="mdui-icon material-icons">rss_feed</i></a>
+  </div>
+</header>
+<div class="mdui-dialog" id="search">
+  
+    <div class="search-form">
+      <input type="search" class="search-form-input" placeholder="请输入关键字">
+    </div>
+    <div class="search-result" data-resource="/search.xml"></div>
+  
+</div>
+  <aside id="sidebar" class="mdui-drawer mdui-drawer-full-height">
+  <div class="mdui-grid-tile">
+    <img src="/images/banner.png" style="height: 160px;">
+    <img src="/images/avatar.jpg" class="avatar-animation" style="position: absolute; top: 10%; left: 24px; width: 64px; height: 64px; border: 2px solid #fff; border-radius: 50%;">
+    <div class="mdui-grid-tile-actions">
+      <div class="mdui-grid-tile-text">
+        <div class="mdui-grid-tile-title">BerserkGuts</div>
+        <div class="mdui-grid-tile-subtitle"><i class="mdui-icon material-icons">art_track</i></div>
+      </div>
+      
+        <div class="mdui-grid-tile-buttons">
+          <a href="mailto:godliker@outlook.com" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content: 'godliker@outlook.com'}"><i class="mdui-icon material-icons">email</i></a>
+        </div>
+      
+    </div>
+  </div>
+
+  <div class="mdui-list" mdui-collapse="{accordion: true}">
+    <a href="/" class="mdui-list-item mdui-ripple">
+      <i class="mdui-list-item-icon mdui-icon material-icons mdui-text-color-blue">home</i>
+      <div class="mdui-list-item-content">主页</div>
+    </a>
+    <div class="mdui-collapse-item">
+      <div class="mdui-collapse-item-header mdui-list-item mdui-ripple">
+        <i class="mdui-list-item-icon mdui-icon material-icons mdui-text-color-deep-orange">inbox</i>
+        <div class="mdui-list-item-content">归档</div>
+        <i class="mdui-collapse-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
+      </div>
+      <div class="mdui-collapse-item-body mdui-list mdui-list-dense">
+        
+        <a class="mdui-ripple sidebar_archives-link" href="/archives/2019/07/">七月 2019<span class="mdui-ripple sidebar_archives-count">3</span></a>
+        
+      </div>
+    </div>
+    <div class="mdui-collapse-item">
+      <div class="mdui-collapse-item-header mdui-list-item mdui-ripple">
+        <i class="mdui-list-item-icon mdui-icon material-icons mdui-text-color-green">chrome_reader_mode</i>
+        <div class="mdui-list-item-content">分类</div>
+        <i class="mdui-collapse-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
+      </div>
+      <div class="mdui-collapse-item-body mdui-list mdui-list-dense">
+        
+        <a class="mdui-ripple sidebar_archives-link" href="/categories/JAVA/">JAVA<span class="mdui-ripple sidebar_archives-count">1</span></a><a class="mdui-ripple sidebar_archives-link" href="/categories/测试/">测试<span class="mdui-ripple sidebar_archives-count">1</span></a>
+        
+      </div>
+    </div>
+    <div class="mdui-collapse-item">
+      <div class="mdui-collapse-item-header mdui-list-item mdui-ripple">
+        <i class="mdui-list-item-icon mdui-icon material-icons mdui-text-color-brown">bookmark</i>
+        <div class="mdui-list-item-content">标签</div>
+        <i class="mdui-collapse-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
+      </div>
+      <div class="mdui-collapse-item-body mdui-list mdui-list-dense">
+        
+        <a class="mdui-ripple sidebar_archives-link" href="/tags/spring-cloud/">spring cloud<span class="mdui-ripple sidebar_archives-count">1</span></a><a class="mdui-ripple sidebar_archives-link" href="/tags/spring-cloud-gateway/">spring cloud gateway<span class="mdui-ripple sidebar_archives-count">1</span></a><a class="mdui-ripple sidebar_archives-link" href="/tags/test/">test<span class="mdui-ripple sidebar_archives-count">1</span></a><a class="mdui-ripple sidebar_archives-link" href="/tags/后台/">后台<span class="mdui-ripple sidebar_archives-count">1</span></a><a class="mdui-ripple sidebar_archives-link" href="/tags/微服务/">微服务<span class="mdui-ripple sidebar_archives-count">1</span></a>
+        
+      </div>
+    </div>
+    <a href="/about" class="mdui-list-item mdui-ripple">
+      <i class="mdui-list-item-icon mdui-icon material-icons mdui-text-color-purple">person</i>
+      <div class="mdui-list-item-content">关于</div>
+    </a>
+  </div>
+
+  <div class="mdui-divider"></div>
+
+  <div class="mdui-list" mdui-collapse="{accordion: true}">
+    
+      <a href="/tagcloud" class="mdui-list-item mdui-ripple">标签云</a>
+    
+      <a href="/gallery" class="mdui-list-item mdui-ripple">画廊</a>
+    
+    <div class="mdui-collapse-item">
+      <div class="mdui-collapse-item-header mdui-list-item mdui-ripple">
+        <div class="mdui-list-item-content">友情链接</div>
+        <i class="mdui-list-item-icon mdui-icon material-icons">link</i>
+      </div>
+      <div class="mdui-collapse-item-body mdui-list mdui-list-dense">
+        
+        
+          <a href="javascript:;" class="mdui-list-item mdui-ripple mdui-p-l-2 mdui-text-color-theme" style="justify-content: center;">链接为空</a>
+        
+      </div>
+    </div>
+  </div>
+</aside>
+  <main id="main" class="mdui-m-t-5 fadeIn animated">
+  <link rel="stylesheet" href="https://cdn.bootcss.com/fancybox/3.5.7/jquery.fancybox.min.css">
+  <style>#main article .mdui-card-content .center-block{display:block!important;margin-right:auto!important;margin-left:auto!important}</style>
+  <article class="mdui-card mdui-m-b-5">
+    <header class="mdui-card-media">
+      <img src="/images/random/material-15.png" style="max-height: 240px;">
+      <div class="mdui-card-media-covered">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title">Spring Cloud Gateway踩坑记录——路由动态配置的实现</div>
+          <div class="mdui-card-primary-subtitle"><i class="iconfont">&#xe697;</i> 2019-07-04 / <i class="iconfont">&#xe601;</i> BerserkGuts</div>
+        </div>
+      </div>
+      <div class="mdui-card-menu">
+        
+          <button class="mdui-btn mdui-btn-icon mdui-text-color-white" mdui-menu="{target: '#qrcode', align: 'right'}"><i class="mdui-icon material-icons">devices</i></button>
+          <ul class="mdui-menu" id="qrcode">
+            
+              <li class="mdui-menu-item"><a class="mdui-text-center mdui-ripple">发送到手机</a></li>
+            
+            <li class="mdui-menu-item" disabled>
+              
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPYAAAD2CAAAAADAeSUUAAAC4ElEQVR42u3aWW4bMRAFQN3/0s4BHE3ea46QEVn8EqRZWDTgRi+vnyPXCxsbGxsbGxsbG/uR7Fe8fl//+znXn6/f+O5pfwGUe8bGxsY+gf2Pf/1v2O8OJdlu8n1yrMn12NjY2OewE8z15+sQ8onwlv8BsLGxsbGTsNceRPKc9rixsbGxsfMAlgeh6++TpAIbGxsb+66iUv7i9UJVHt4+XkvDxsbGfjy7bfQ+4fN/6G9jY2NjP5I9W3nBqN5c2Twu9oyNjY29KXu23ZUt5iM7s6HP4fAlNjY29tey860ULyhLTslbZgeBjY2NfQJ7VsRJXpwnGyuNhBu6ItjY2Nhfzs7xbQJzHYRmoahtEmBjY2Ofw14ZoynGH8tUJDmm4siwsbGxt2a3ASxv+l5T20QoeU7R38bGxsbejp0PXA7LOvFdebi6IQPDxsbGPoB9b+iaHV87PHRDAMPGxsb+KnZeVJqFqLbklA/uFA1mbGxs7MPY+a9tgzY56FnhqS4qYWNjY2/B/kRztw2EK63fYaMXGxsbezt2fnN+V1tmmqU0RRDFxsbG3pS9son215VhoDbEFhkYNjY29hbsWYO23eInikfFmCY2Njb2puyVgZh8u3lwWildLWVg2NjY2F/LzhOGlTRgllrkjYHoXmxsbOxN2QkgLye1x5cPAOXHjY2NjX0m+2d5JUlIW0haQUZFJWxsbOyN2OsjMvlBzAJSfsQ3xG1sbGzsL2TPtjvbVn5YeZshuhIbGxv7MHZefJ+1gZMUZWVhY2Njn8OeFY/yVCRv387C2DCAYWNjY2/EnoWr9fCTpz3JlVFKg42Njb01e72J24a3tjkxax5gY2Njn8a+K8zMnrNS5FoKYNjY2NjHs5MAljcP8qHMuiyFjY2NjT3itclD3h6+raiEjY2NvRF7ttE2CWmPMuFF7WRsbGzsrdn3tmbb8ZqVAc087GFjY2Pvyj5nYWNjY2NjY2NjYz9m/QEbwUlL+9OoOAAAAABJRU5ErkJggg==">
+              
+            </li>
+          </ul>
+        
+        
+          <button class="mdui-btn mdui-btn-icon mdui-text-color-white" mdui-menu="{target: '#share_menu', align: 'right'}"><i class="mdui-icon material-icons">share</i></button>
+          <ul class="mdui-menu" id="share_menu">
+            <li class="mdui-menu-item">
+              <a href="http://service.weibo.com/share/share.php?appkey=&title=Spring Cloud Gateway踩坑记录——路由动态配置的实现&url=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/&pic=https://BerserkGuts.github.io/images/favicon.png&searchPic=false&style=simple" target="_blank" class="mdui-ripple">分享到微博</a>
+            </li>
+            <li class="mdui-menu-item">
+              <a href="https://twitter.com/intent/tweet?text=Spring Cloud Gateway踩坑记录——路由动态配置的实现&url=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/&via=BerserkGuts" target="_blank" class="mdui-ripple">分享到Twitter</a>
+            </li>
+            <li class="mdui-menu-item">
+              <a href="https://www.facebook.com/sharer/sharer.php?u=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/" target="_blank" class="mdui-ripple">分享到Facebook</a>
+            </li>
+            <li class="mdui-menu-item">
+              <a href="https://plus.google.com/share?url=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/" target="_blank" class="mdui-ripple">分享到Google+</a>
+            </li>
+            <li class="mdui-menu-item">
+              <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/&title=Spring Cloud Gateway踩坑记录——路由动态配置的实现" target="_blank" class="mdui-ripple">分享到LinkedIn</a>
+            </li>
+            <li class="mdui-menu-item">
+              <a href="http://connect.qq.com/widget/shareqq/index.html?site=Behelit—Helps you become god hand of coding&title=Spring Cloud Gateway踩坑记录——路由动态配置的实现&summary=&pics=https://BerserkGuts.github.io/images/favicon.png&url=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/" target="_blank" class="mdui-ripple">分享到QQ</a>
+            </li>
+            <li class="mdui-menu-item">
+              <a href="https://telegram.me/share/url?url=https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/&text=Spring Cloud Gateway踩坑记录——路由动态配置的实现" target="_blank" class="mdui-ripple">分享到Telegram</a>
+            </li>
+          </ul>
+        
+      </div>
+    </header>
+    <div class="mdui-card-content mdui-typo">
+      <h5 id="初心"><a href="#初心" class="headerlink" title="初心"></a>初心</h5><p>​       前阵子在项目中应用了spring-cloud-gateway作为微服务网关，由于spring-cloud-gateway基于webfux，而本人是首次尝试使用webflux，因此踩到了很多坑，特此记录下来，希望能够帮助和我一样初次使用spring-cloud-gateway的同学尽量少踩几个坑。</p>
+<h5 id="问题现象"><a href="#问题现象" class="headerlink" title="问题现象"></a>问题现象</h5><pre><code>关于spring-cloud-gateway的路由配置，官方文档里的demo都是通过配置文件来手动配置路由，这样每次修改路由配置都需要重启网关服务，而实际使用时网关作为总入口不能频繁重启，因此需要实现无重启的方式来热更新路由配置。虽然基于服务id的路由发现可以通过配置实现自动路由（具体配置方式如下图所示），但是静态路由只能手动一个个配置。当然也可以配置服务总线实现配置文件热更新，这样修改git里的配置文件就能自动更新路由而无需重启，但是这样必须操作git，无法集成在自己的app里，而网关自带的post接口虽然可以动态修改路由，但是无法持久化，各种现有的动态路由实现方式和存在问题如下表所示。</code></pre><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#基于服务发现自动路由，如果启用基于服务发现的那些路由可以不用配置路由了</span></span><br><span class="line"><span class="attr">spring:</span></span><br><span class="line"><span class="attr">  cloud:</span></span><br><span class="line"><span class="attr">    gateway:</span></span><br><span class="line"><span class="attr">      discovery:</span></span><br><span class="line"><span class="attr">        locator:</span></span><br><span class="line">          <span class="comment"># 将服务id的路由转成全小写，默认是全大写</span></span><br><span class="line"><span class="attr">          lower-case-service-id:</span> <span class="literal">true</span></span><br><span class="line">          <span class="comment"># 启用服务发现自动路由</span></span><br><span class="line"><span class="attr">          enabled:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">          filters:</span></span><br><span class="line">            <span class="comment">#不省略头部避免跳转到页面时css和js等静态资源加载不到的问题</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">StripPrefix=0</span></span><br><span class="line">            <span class="comment"># 限流过滤器</span></span><br><span class="line"><span class="attr">            - name:</span> <span class="string">RequestRateLimiter</span></span><br><span class="line"><span class="attr">              args:</span></span><br><span class="line">                <span class="string">redis-rate-limiter.replenishRate:</span> <span class="number">10</span></span><br><span class="line">                <span class="string">redis-rate-limiter.burstCapacity:</span> <span class="number">20</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>配置方式</th>
+<th>动态路由不需要重启</th>
+<th>静态路由不需要重启</th>
+<th>配置可持久化</th>
+<th>修改配置的操作是否可集成到其他app</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>配置文件或者RouteLocator类</td>
+<td>×</td>
+<td>×</td>
+<td>√</td>
+<td>×</td>
+</tr>
+<tr>
+<td>在配置文件里设置自动路由</td>
+<td>√</td>
+<td>×</td>
+<td>√</td>
+<td>×</td>
+</tr>
+<tr>
+<td>通过消息总线实现配置文件更新时网关自动热更新</td>
+<td>√</td>
+<td>√</td>
+<td>√</td>
+<td>×</td>
+</tr>
+<tr>
+<td>通过spring cloud gateway自带的修改路由接口进行修改</td>
+<td>√</td>
+<td>√</td>
+<td>×</td>
+<td>√</td>
+</tr>
+</tbody></table>
+<h5 id="探索"><a href="#探索" class="headerlink" title="探索"></a>探索</h5><p>​    由于上诉这些方法都存在一定的问题，这里就不详细描述他们的实现方式了。这里主要描述如何实现能够满足上述四个要求的路由动态配置方法。（不关心原理的可跳过这一节直接阅读解决方法）</p>
+<p>​    通过查看spring cloud gateway 的源码我们可以发现，网关的路由配置接口为RouteDefinitionLocator类，该类只有一个方法getRouteDefinitions()用于获取定义好的路由配置。其代码如下图所示。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.springframework.cloud.gateway.route;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> reactor.core.publisher.Flux;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> Spencer Gibb</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">RouteDefinitionLocator</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="function">Flux&lt;RouteDefinition&gt; <span class="title">getRouteDefinitions</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>​    该类的具体实现及相应作用如下表所示。</p>
+<table>
+<thead>
+<tr>
+<th>实现类类名</th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CachingRouteDefinitionLocator</td>
+<td>缓存包装类，将网关路由的配置通过一个map缓存到内存里</td>
+</tr>
+<tr>
+<td>PropertiesRouteDefinitionLocator</td>
+<td>从配置文件读取路由配置</td>
+</tr>
+<tr>
+<td>DiscoveryClientRouteDefinitionLocator</td>
+<td>从注册中心读取路由配置</td>
+</tr>
+<tr>
+<td>RouteDefinitionRepository</td>
+<td>接口，从库（比如内存、redis等）读取路由配置</td>
+</tr>
+<tr>
+<td>CompositeRouteDefinitionLocator</td>
+<td>组合类，将各个路由配置通过flatMap整合起来</td>
+</tr>
+</tbody></table>
+<p>​    路由的配置有这么多类的实现，那么实际起作用的是哪几个类呢，这个可以从autoconfig的类里面查看。我们从GatewayDiscoveryClientAutoConfiguration类和GatewayAutoConfiguration类里可以看到路由类的配置，如下代码所示。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// GatewayDiscoveryClientAutoConfiguration类源码中关于路由配置的部分</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">GatewayDiscoveryClientAutoConfiguration</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="meta">@ConditionalOnBean</span>(DiscoveryClient.class)</span><br><span class="line">	<span class="meta">@ConditionalOnProperty</span>(name = <span class="string">"spring.cloud.gateway.discovery.locator.enabled"</span>)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> DiscoveryClientRouteDefinitionLocator <span class="title">discoveryClientRouteDefinitionLocator</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">			DiscoveryClient discoveryClient, DiscoveryLocatorProperties properties)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> DiscoveryClientRouteDefinitionLocator(discoveryClient, properties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> DiscoveryLocatorProperties <span class="title">discoveryLocatorProperties</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		DiscoveryLocatorProperties properties = <span class="keyword">new</span> DiscoveryLocatorProperties();</span><br><span class="line">		properties.setPredicates(initPredicates());</span><br><span class="line">		properties.setFilters(initFilters());</span><br><span class="line">		<span class="keyword">return</span> properties;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// GatewayAutoConfiguration类源码中关于路由配置的部分</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">GatewayAutoConfiguration</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="meta">@ConditionalOnMissingBean</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> PropertiesRouteDefinitionLocator <span class="title">propertiesRouteDefinitionLocator</span><span class="params">(GatewayProperties properties)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> PropertiesRouteDefinitionLocator(properties);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="meta">@ConditionalOnMissingBean</span>(RouteDefinitionRepository.class)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> InMemoryRouteDefinitionRepository <span class="title">inMemoryRouteDefinitionRepository</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> InMemoryRouteDefinitionRepository();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="meta">@Primary</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> RouteDefinitionLocator <span class="title">routeDefinitionLocator</span><span class="params">(List&lt;RouteDefinitionLocator&gt; routeDefinitionLocators)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> CompositeRouteDefinitionLocator(Flux.fromIterable(routeDefinitionLocators));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> RouteLocator <span class="title">routeDefinitionRouteLocator</span><span class="params">(GatewayProperties properties,</span></span></span><br><span class="line"><span class="function"><span class="params">													List&lt;GatewayFilterFactory&gt; GatewayFilters,</span></span></span><br><span class="line"><span class="function"><span class="params">													List&lt;RoutePredicateFactory&gt; predicates,</span></span></span><br><span class="line"><span class="function"><span class="params">													RouteDefinitionLocator routeDefinitionLocator,</span></span></span><br><span class="line"><span class="function"><span class="params">													@Qualifier(<span class="string">"webFluxConversionService"</span>)</span></span></span><br><span class="line"><span class="function">													ConversionService conversionService) </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> RouteDefinitionRouteLocator(routeDefinitionLocator, predicates, GatewayFilters,</span><br><span class="line">				properties, conversionService);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="meta">@Primary</span></span><br><span class="line">	<span class="comment">//<span class="doctag">TODO:</span> property to disable composite?</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> RouteLocator <span class="title">cachedCompositeRouteLocator</span><span class="params">(List&lt;RouteLocator&gt; routeLocators)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> CachingRouteLocator(<span class="keyword">new</span> CompositeRouteLocator(Flux.fromIterable(routeLocators)));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>​    从上述源码中我们可以看到，当spring.cloud.gateway.discovery.locator.enabled属性设置为true时，启用DiscoveryClientRouteDefinitionLocator自动发现路由，此外还默认开启了PropertiesRouteDefinitionLocator和InMemoryRouteDefinitionRepository（RouteDefinitionRepository接口的默认实现）路由配置类，并通过CompositeRouteDefinitionLocator将这些路由配置合并起来，然后通过CachingRouteDefinitionLocator类缓存起来。</p>
+<h5 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h5><p>​    从源码中我们看到，InMemoryRouteDefinitionRepository实现类Bean的配置的注解@ConditionalOnMissingBean(RouteDefinitionRepository.class),也就是说如果我们自行实现RouteDefinitionRepository类并配置这个Bean，那么就能在我们自行实现的类里定义路由然后由CompositeRouteDefinitionLocator帮我们合并到总体的路由配置里，由于RouteDefinitionRepository的定义就是通过库去获取配置，所以我们可以实现该接口，然后在getRouteDefinitions()方法里读取库里的信息——这里使用redis，这样我们只要在其他应用里直接操作redis缓存就能实现路由的更新，无需重启网关。具体实现类如下。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DynamicRouterRepository</span> <span class="keyword">implements</span> <span class="title">RouteDefinitionRepository</span></span>&#123;</span><br><span class="line">    <span class="meta">@Autowired</span></span><br><span class="line">    <span class="keyword">private</span> RedisTemplate redisTemplate;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Flux&lt;RouteDefinition&gt; <span class="title">getRouteDefinitions</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">                </span><br><span class="line">                <span class="comment">//从redis读取路由配置，redis里的信息可使用其他应用进行操作</span></span><br><span class="line">                Object obj = redisTemplate.opsForValue().get(<span class="string">"CLOUD_GATEWAY_ROUTE_KEY"</span>);</span><br><span class="line">                <span class="keyword">if</span> (obj == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="keyword">return</span> Flux.empty();</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">//CustomRouteConfig是自定义的路由配置信息类</span></span><br><span class="line">                List&lt;CustomRouteConfig&gt; results = (List&lt;CustomRouteConfig&gt;) obj;</span><br><span class="line">                List&lt;RouteDefinition&gt; routeDefinitions=<span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">                <span class="comment">//遍历配置信息列表，将其转化为标准的路由配置定义</span></span><br><span class="line">                <span class="keyword">for</span>(CustomRouteConfig customRouteConfig:results)&#123;</span><br><span class="line">                    <span class="comment">//只对启用的且有服务id的路由配置进行标准化</span></span><br><span class="line">                    <span class="keyword">if</span>(!StringUtils.isEmpty(customRouteConfig.getPath())</span><br><span class="line">                       &amp;&amp;<span class="string">"1"</span>.equals(customRouteConfig.getEnabled()))&#123;</span><br><span class="line">                        RouteDefinition definition = <span class="keyword">new</span> RouteDefinition();</span><br><span class="line">                        List&lt;PredicateDefinition&gt; predicateDefinitions </span><br><span class="line">                            =<span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">                        List&lt;FilterDefinition&gt; filterDefinitions=<span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line"></span><br><span class="line">                        <span class="comment">//不存在跳转url，视为动态路由</span></span><br><span class="line">                        <span class="keyword">if</span>(StringUtils.isEmpty(customRouteConfig.getUrl()))&#123;</span><br><span class="line">                            definition.setUri(</span><br><span class="line">                                <span class="keyword">new</span> URI(<span class="string">"lb://"</span>+customRouteConfig.getServiceId()</span><br><span class="line">                                        .toUpperCase()));</span><br><span class="line">                        &#125;</span><br><span class="line">                        <span class="comment">//不存在跳转url但有服务id,视为静态路由</span></span><br><span class="line">                        <span class="keyword">else</span> <span class="keyword">if</span>(!StringUtils.isEmpty(customRouteConfig.getServiceId()))&#123;</span><br><span class="line">                            definition.setUri(<span class="keyword">new</span> URI(customRouteConfig.getUrl()));</span><br><span class="line"></span><br><span class="line">                        &#125;</span><br><span class="line">                        <span class="comment">//两者同时不存在,跳过这个路由</span></span><br><span class="line">                        <span class="keyword">else</span>&#123;</span><br><span class="line">                           <span class="keyword">continue</span>;</span><br><span class="line">                        &#125;</span><br><span class="line">                        PredicateDefinition predicateDefinition=</span><br><span class="line">                            <span class="keyword">new</span>  PredicateDefinition();</span><br><span class="line">                        predicateDefinition.setName(<span class="string">"Path"</span>);</span><br><span class="line">                        Map&lt;String,String&gt; args=<span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">                        <span class="comment">//路由的匹配路径</span></span><br><span class="line">                        args.put(<span class="string">"pattern"</span>,customRouteConfig.getPath());</span><br><span class="line">                        predicateDefinition.setArgs(args);</span><br><span class="line">                        predicateDefinitions.add(predicateDefinition);</span><br><span class="line"></span><br><span class="line">                        <span class="comment">//前缀过滤器，过滤器的名称和官方文档里配置文件里的名称一致，参数可能不一致，需</span></span><br><span class="line">                        <span class="comment">//要查看该过滤器的Config类确定</span></span><br><span class="line">                        FilterDefinition filterDefinition=<span class="keyword">new</span> FilterDefinition();</span><br><span class="line">                        filterDefinition.setName(<span class="string">"StripPrefix"</span>);</span><br><span class="line">                        Map&lt;String,String&gt; stripArgs=<span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">                        stripArgs.put(<span class="string">"parts"</span>,customRouteConfig.getStripPrefix());</span><br><span class="line">                        filterDefinition.setArgs(stripArgs);</span><br><span class="line">                        filterDefinitions.add(filterDefinition);</span><br><span class="line">                        <span class="comment">//限流过滤器，仅测试动态路由时可去掉这一段</span></span><br><span class="line">                        FilterDefinition rateLimit=<span class="keyword">new</span> FilterDefinition();</span><br><span class="line">                        rateLimit.setName(<span class="string">"RequestRateLimiter"</span>);</span><br><span class="line">                        Map&lt;String,String&gt; rateLimitArgs=<span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">                        rateLimitArgs.put(<span class="string">"redis-rate-limiter.replenishRate"</span>,<span class="string">"100"</span>);</span><br><span class="line">                        rateLimitArgs.put(<span class="string">"redis-rate-limiter.burstCapacity"</span>,<span class="string">"200"</span>);</span><br><span class="line">                        <span class="comment">//这里customKeyResolver是自定义限流解析器</span></span><br><span class="line">                        rateLimitArgs.put(<span class="string">"key-resolver"</span>, <span class="string">"#&#123;@customKeyResolver&#125;"</span>);</span><br><span class="line">                        rateLimit.setArgs(rateLimitArgs);</span><br><span class="line">                        filterDefinitions.add(rateLimit);</span><br><span class="line"></span><br><span class="line">                        definition.setFilters(filterDefinitions);</span><br><span class="line">                        definition.setId(customRouteConfig.getId().toString());</span><br><span class="line">                        definition.setPredicates(predicateDefinitions);</span><br><span class="line">                        definition.setPredicates(predicateDefinitions);</span><br><span class="line">                        routeDefinitions.add(definition);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            <span class="keyword">return</span> Flux.fromIterable(routeDefinitions);</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">            <span class="keyword">return</span> Flux.empty();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//因为网关的配置是采用其他微服务修改redis缓存实现的，而不是通过gateway的rest api修改的，</span></span><br><span class="line">    <span class="comment">//因此无需实现save和delete方法</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Mono&lt;Void&gt; <span class="title">save</span><span class="params">(Mono&lt;RouteDefinition&gt; mono)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> mono.flatMap(r -&gt; &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> Mono.empty();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">                <span class="keyword">return</span> Mono.defer(() -&gt; Mono.error(<span class="keyword">new</span> NotFoundException(<span class="string">"RouteDefinition save error: "</span>+ r.getId())));</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Mono&lt;Void&gt; <span class="title">delete</span><span class="params">(Mono&lt;String&gt; mono)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>自定义的路由信息类如下，仅供参考，可自行实现</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SysZuulRoute</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 路由匹配路径</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> String path;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务id</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">   </span><br><span class="line">    <span class="keyword">private</span> String serviceId;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 静态路由转发地址</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> String url;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 转发去掉前缀</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">   </span><br><span class="line">    <span class="keyword">private</span> String stripPrefix;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否启用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> String enabled;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这样就能实现路由的动态配置了。</p>
+<h5 id="备注"><a href="#备注" class="headerlink" title="备注"></a>备注</h5><p>本人使用的spring cloud gateway版本为2.1.0.RC3，其他版本可能会有细微区别</p>
+
+      <blockquote class="mdui-m-t-5">
+        
+        <strong>本文链接：</strong><a href="https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/">https://BerserkGuts.github.io/2019/07/04/Spring-Cloud-Gateway踩坑记录/</a>
+      </blockquote>
+      
+    </div>
+    <footer class="mdui-card-actions">
+      
+        <a class="mdui-ripple article_categories-link" href="/categories/JAVA/">JAVA</a>
+      
+      
+        <a class="mdui-ripple article_tags-link" href="/tags/spring-cloud/">spring cloud</a><a class="mdui-ripple article_tags-link" href="/tags/spring-cloud-gateway/">spring cloud gateway</a><a class="mdui-ripple article_tags-link" href="/tags/后台/">后台</a><a class="mdui-ripple article_tags-link" href="/tags/微服务/">微服务</a>
+      
+    </footer>
+    
+  </article>
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdn.bootcss.com/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+  <script>$("#main article .mdui-card-content img.fancybox").on("click",function(e){$.fancybox.open({src:$(this).attr("src")});});</script>
+
+
+  <nav id="paginator">
+    
+    <div class="spacer"></div>
+    
+      <a rel="next" class="extend next" href="/2019/07/03/我的第一个博客/">
+        下一篇&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <button aria-label="next" class="mdui-btn mdui-btn-raised mdui-btn-dense mdui-btn-icon mdui-color-theme-accent mdui-ripple"><i class="mdui-icon material-icons">arrow_forward</i></button>
+      </a>
+    
+  </nav>
+
+
+
+</main>
+  <footer id="footer" class="mdui-m-t-5 mdui-p-y-3 mdui-color-theme">
+  <div class="mdui-p-y-0 mdui-text-center">
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  </div>
+  <div class="mdui-p-y-1 mdui-text-center">
+    Copyright &copy; 2019 BerserkGuts<br>
+    Powered by <a href="https://hexo.io/" target="_blank" class="mdui-text-color-theme-accent">Hexo</a>
+    
+  </div>
+</footer>
+  <button id="gotop" class="mdui-fab mdui-fab-fixed mdui-fab-hide mdui-ripple mdui-color-theme-accent"><i class="mdui-icon material-icons">arrow_upward</i></button>
+  
+  <script src="/js/mdui.js"></script>
+<script src="/js/script.js"></script>
+</body>
+</html>
